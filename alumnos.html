@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+	<html lang="es">
+		<head>
+			<!-- Required meta tags -->
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+
+			<!-- Bootstrap CSS -->
+			<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+			<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+			<title>App ABCC</title>
+		</head>
+		<body>
+			
+			<div class="container">
+				<h1 class="text-center mb-5 mt-5 text-danger"><b> Servicios Escolares</b></h1>
+				<div class="card mb-5">
+					<div class="card-header">
+						<div class="row">
+							<div class="col col-6">Lsitado de Alumnos</div>
+							<div class="col col-6">
+								<button type="button" 
+                                    class="btn btn-primary btn-sm float-end" onclick="makeModal('Agregar Alumno', 'Guardar', 'agregarRegistro')">
+                                    AGREGAR
+                                </button>
+							</div>
+						</div>
+					</div>
+					<div class="card-body">
+						<div class="table-responsive">
+							<table class="table table-bordered table-striped">
+								<thead>
+									<tr>
+										<th>Num. Control</th>
+										<th>Nombre</th>
+										<th>Primer Ap.</th>
+                                        <th>Segundo Ap.</th>
+										<th>Acciones</th>
+									</tr>
+								</thead>
+								<tbody id="dataArea"></tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</body>
+	</html>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+	<div id="modalArea"></div>
+
+	<script>
+
+	var alumnoModalElement;
+
+	function makeModal(title, button_value, callback)
+	{
+		let html = `
+            <div class="modal" tabindex="-1" id="alumnoModal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        
+                        <form id="alumnoform">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${title}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label>Numero de Control:</label>
+                                    <input type="text" name="numControl" id="numControl" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Nombre:</label>
+                                    <input type="text" name="nombre" id="nombre" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Primer Apellido:</label>
+                                    <input type="text" name="primerAp" id="primerAp" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Segundo Apellido:</label>
+                                    <input type="text" name="segundoAp" id="segundoAp" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Fecha de Nacimiento:</label>
+                                    <input type="text" name="fechaNac" id="fechaNac" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Semestre</label>
+                                    <input type="number" name="semestre" id="semestre" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label>Carrera:</label>
+                                    <input type="text" name="carrera" id="carrera" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <input type="hidden" name="alumno_id" id="alumno_id" />
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="button" class="btn btn-primary" onclick="${callback}()">${button_value}</button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+		`;
+
+		document.querySelector('#modalArea').innerHTML = html;
+
+		alumnoModalElement = new bootstrap.Modal(document.getElementById('alumnoModal'));
+
+		alumnoModalElement.show();
+	}
+
+	function agregarRegistro()
+	{
+		let formElement = document.getElementById('alumnoform');
+		const formData = new FormData(formElement);
+		// Convert formData to JSON
+		const jsonData = {};
+		formData.forEach((value, key) => {
+			jsonData[key] = value;
+		});
+
+        console.log(jsonData);
+
+		// Make a POST request using Fetch API
+		fetch('/alumnos', {
+			method : 'POST',
+			body : JSON.stringify(jsonData),
+			headers : {
+				'Content-Type': 'application/json'
+			}
+		})
+		.then(response => {
+			return response.json();
+		})
+		.then(data => {
+			alumnoModalElement.hide();
+			mostrarRegistros();
+		});
+		Swal.fire({
+        title: "Registro Agregado",
+        text: "Datos Correctos!",
+        icon: "success"
+      });
+	}
+
+	mostrarRegistros();
+
+	function mostrarRegistros(){
+		fetch('/alumnos')
+		.then(response => {
+			return response.json();
+		})
+		.then(data => {
+			let html = '';
+			if(data.length > 0){
+				data.map((row) => {
+					html += `
+					<tr>
+						<td>${row.numControl}</td>
+						<td>${row.nombre}</td>
+						<td>${row.primerAp}</td>
+                        <td>${row.segundoAp}</td>
+						<td>
+							<button type="button" class="btn btn-warning btn-sm" onclick="detalle('${row.id}')">Editar</button>
+							<button type="button" class="btn btn-danger btn-sm" onclick="eliminar('${row.id}')">Eliminar</button>
+						</td>
+					</tr>
+					`;
+                
+					console.log(data);
+                    
+				});
+			} else {
+				html = '<tr><td colspan="4" class="text-center">No hay registros.</td></tr>';
+			}
+			document.getElementById('dataArea').innerHTML = html;
+		});
+	}
+
+	function detalle(id){
+		fetch(`/alumnos/${id}`)
+		.then(response => {
+			return response.json();
+		})
+		.then(data => {
+			makeModal('Editar Alumno', 'Guardar Cambios', 'modificar');
+			document.getElementById('numControl').value = data.numControl;
+			document.getElementById('nombre').value = data.nombre;
+			document.getElementById('primerAp').value = data.primerAp;
+			document.getElementById('segundoAp').value = data.segundoAp;
+			document.getElementById('fechaNac').value = data.fechaNac;
+			document.getElementById('semestre').value = data.semestre;
+			document.getElementById('carrera').value = data.carrera;
+			document.getElementById('alumno_id').value = data.id;
+		});
+	}
+
+	function modificar(){
+		let formElement = document.getElementById('alumnoform');
+		const formData = new FormData(formElement);
+		let jsonData = {};
+		formData.forEach((value, key) => { 
+			jsonData[key] = value;
+		});
+		const alumnoId = document.getElementById('alumno_id').value;
+		fetch(`/alumnos/${alumnoId}`, {
+			method : 'PUT',
+			body : JSON.stringify(jsonData),
+			headers : {
+				'Content-Type': 'application/json'
+			}
+		})
+		.then(response => {
+			return response.json();
+		})
+		.then(data => {
+			alumnoModalElement.hide();
+			mostrarRegistros();
+		});
+		Swal.fire({
+        title: "Registro Modificado!",
+        text: "Datos Correctos!",
+        icon: "success"
+      });
+	}
+
+	function eliminar(id){
+
+		Swal.fire({
+  title: "Desea Eliminar este Regitro",
+  icon: "question",
+  iconHtml: "?",
+  confirmButtonText: "Eliminar",
+  cancelButtonText: "Cancelar",
+  showCancelButton: true,
+  showCloseButton: true,
+  confirmButtonColor: "red" // Verde
+}).then((result) => {
+  if (result.isConfirmed) {
+	fetch(`/alumnos/${id}`, {
+				method : 'DELETE',
+				headers : {
+					'Content-Type': 'application/json'
+				}
+			})
+			.then(response => {
+				return response.json();
+			})
+			.then(data => {
+				mostrarRegistros();
+			});
+  } else if (result.isDismissed) {
+    
+  }
+});
+
+		
+	}
+
+</script>
