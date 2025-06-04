@@ -10,16 +10,20 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Inicializar Firebase Admin leyendo credenciales desde variable de entorno JSON
-const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+// ====================== INICIALIZAR FIREBASE ========================
+const rawCredentials = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+
+// Corregir el formato del private_key reemplazando \\n por saltos de línea reales
+rawCredentials.private_key = rawCredentials.private_key.replace(/\\n/g, '\n');
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(rawCredentials),
 });
 
 const db = admin.firestore();
 const alumnosCollection = db.collection('alumnos');
 
+// ====================== EXPRESS ========================
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -27,7 +31,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-//==================== RUTAS =============================
+// ===================== RUTAS =============================
 
 // Página principal
 app.get('/', (req, res) => {
