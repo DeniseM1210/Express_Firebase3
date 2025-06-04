@@ -1,99 +1,104 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import admin from 'firebase-admin';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const express = require('express');
+const admin = require('firebase-admin');
+const bodyParser = require('body-parser');
+const path = require('path');
 
-dotenv.config();
+const app = express();
+const PORT = 3001;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ====================== INICIALIZAR FIREBASE ========================
-const rawCredentials = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-
-// Corregir el formato del private_key reemplazando \\n por saltos de línea reales
-rawCredentials.private_key = rawCredentials.private_key.replace(/\\n/g, '\n');
+// Inicializar Firebase
+const serviceAccount = {
+  type: process.env.GOOGLE_TYPE,
+  project_id: process.env.GOOGLE_PROJECT_ID,
+  private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+  private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email: process.env.GOOGLE_CLIENT_EMAIL,
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  auth_uri: process.env.GOOGLE_AUTH_URI,
+  token_uri: process.env.GOOGLE_TOKEN_URI,
+  auth_provider_x509_cert_url: process.env.GOOGLE_AUTH_PROVIDER_X509_CERT_URL,
+  client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL,
+};
 
 admin.initializeApp({
-  credential: admin.credential.cert(rawCredentials),
+  credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
 const alumnosCollection = db.collection('alumnos');
 
-// ====================== EXPRESS ========================
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-app.use(cors());
-app.use(express.json());
+// Middlewares
+app.use(bodyParser.json());
 app.use(express.static(__dirname));
 
-// ===================== RUTAS =============================
+// ============== RUTAS ==============
 
 // Página principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'alumnos.html'));
 });
 
-//----- ALTAS
+// Alta (crear alumno)
 app.post('/alumnos', async (req, res) => {
   try {
-    const alumnoData = req.body;
-    const nuevoDoc = await alumnosCollection.add(alumnoData);
-    res.status(201).json({ exito: true, id: nuevoDoc.id });
+    const nuevoAlumno = req.body;
+    await alumnosCollection.add(nuevoAlumno);
+    res.status(201).json({ exito: true });
   } catch (error) {
-    console.error('Error al guardar alumno:', error);
-    res.status(500).json({ exito: false, error: error.message });
+    res.status(500).json({ error: 'Error al crear alumno' });
   }
 });
 
-//----- BAJAS
+// Baja (eliminar alumno)
 app.delete('/alumnos/:id', async (req, res) => {
   try {
-    await alumnosCollection.doc(req.params.id).delete();
+    const id = req.params.id;
+    await alumnosCollection.doc(id).delete();
     res.status(200).json({ message: 'Registro ELIMINADO' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al eliminar alumno' });
   }
 });
 
-//----- CAMBIOS
+// Cambio (actualizar alumno)
 app.put('/alumnos/:id', async (req, res) => {
   try {
-    await alumnosCollection.doc(req.params.id).update(req.body);
-    res.status(200).json({ message: 'Registro ACTUALIZADO' });
+    const id = req.params.id;
+    await alumnosCollection.doc(id).update(req.body);
+    res.status(200).json({ mensaje: 'Alumno actualizado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al actualizar alumno' });
   }
 });
 
-//----- CONSULTAS
+// Consulta (obtener todos)
 app.get('/alumnos', async (req, res) => {
   try {
     const snapshot = await alumnosCollection.get();
-    const alumnos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const alumnos = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
     res.status(200).json(alumnos);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al obtener alumnos' });
   }
 });
 
+// Consulta (obtener uno)
 app.get('/alumnos/:id', async (req, res) => {
   try {
-    const doc = await alumnosCollection.doc(req.params.id).get();
+    const id = req.params.id;
+    const doc = await alumnosCollection.doc(id).get();
     if (!doc.exists) {
       return res.status(404).json({ error: 'Alumno no encontrado' });
     }
     res.status(200).json({ id: doc.id, ...doc.data() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al obtener alumno' });
   }
 });
 
-//----- INICIAR SERVIDOR
 app.listen(PORT, () => {
   console.log(`Servidor ejecutando en el PUERTO: ${PORT}`);
 });
